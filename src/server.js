@@ -3,22 +3,26 @@ import cors from 'cors';
 import pino from 'pino-http';
 import { getEnvVar } from './utils/getEnvVar.js';
 import contactsRouter from './routers/contacts.js';
+import authRouter from './routers/auth.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import { notFoundHandler } from './middlewares/notFoundHandler.js';
+import cookieParser from 'cookie-parser';
 
 const PORT = Number(getEnvVar('PORT', '3000'));
 
 export function setupServer() {
   const app = express();
 
+  app.use(express.json());
   app.use(
-    express.json({
-      type: ['application/json', 'application/vnd.api+json'],
-      limit: '100kb',
+    cors({
+      origin: getEnvVar('CORS_ORIGIN', 'http://localhost:3000'),
+      credentials: true,
     }),
   );
-  app.use(cors());
   app.set('json spaces', 2);
+
+  app.use(cookieParser());
 
   app.use(
     pino({
@@ -34,6 +38,7 @@ export function setupServer() {
     });
   });
 
+  app.use('/auth', authRouter);
   app.use('/contacts', contactsRouter);
 
   app.use(notFoundHandler);
