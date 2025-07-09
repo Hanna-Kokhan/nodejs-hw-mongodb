@@ -4,3 +4,7 @@ node_modules/
 dist/
 npm-debug.log
 *.log
+
+# Uploads
+/temp
+/uploads

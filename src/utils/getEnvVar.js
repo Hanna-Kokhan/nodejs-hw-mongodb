@@ -1,4 +1,5 @@
 import dotenv from 'dotenv';
+import { ENV_VARS } from '../constants/envVars.js';
 
 dotenv.config();
 

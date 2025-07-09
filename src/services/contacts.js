@@ -1,37 +1,50 @@
-import { ContactsCollection } from '../db/models/contacts.js';
-import { calculatePaginationData } from '../utils/calculatePaginationData.js';
-import { SORT_ORDER } from '../constants/index.js';
+import { ContactCollection } from '../db/models/contacts.js';
+import { calcPaginationData } from '../utils/calcPaginationData.js';
+import { getEnvVar } from '../utils/getEnvVar.js';
+import { ENV_VARS } from '../constants/envVars.js';
+import { saveFileToUploads, deleteFileFromTemp } from '../utils/saveFile.js';
+import {
+  initCloudinary,
+  uploadToCloudinary,
+  deleteFromCloudinary,
+} from '../utils/cloudinary.js';
+import { CLOUDINARY } from '../constants/envVars.js';
+import path from 'node:path';
+import fs from 'node:fs/promises';
+import { UPLOAD_DIR } from '../constants/paths.js';
+
+initCloudinary();
 
 export const getAllContacts = async ({
-  page = 1,
-  perPage = 10,
-  sortBy = '_id',
-  sortOrder = SORT_ORDER.ASC,
-  filter = {},
+  page,
+  perPage,
+  sortBy,
+  sortOrder,
+  filter,
   userId,
 }) => {
   const limit = perPage;
   const skip = (page - 1) * perPage;
 
-  const contactsQuery = ContactsCollection.find({ userId: userId });
+  const contactsQuery = ContactCollection.find({ userId });
 
-  if (filter.type) {
-    contactsQuery.where('contactType').equals(filter.type);
-  }
-  if (typeof filter.isFavourite === 'boolean') {
-    contactsQuery.where('isFavourite').equals(filter.isFavourite);
+  if (filter.contactType) {
+    contactsQuery.where('contactType').equals(filter.contactType);
   }
 
-  const [contactsCount, contacts] = await Promise.all([
-    ContactsCollection.countDocuments({ userId: userId }).merge(contactsQuery),
-    contactsQuery
-      .skip(skip)
-      .limit(limit)
-      .sort({ [sortBy]: sortOrder })
-      .exec(),
-  ]);
+  if (filter.isFavorite) {
+    contactsQuery.where('isFavorite').equals(filter.isFavorite);
+  }
 
-  const paginationData = calculatePaginationData(contactsCount, page, perPage);
+  const contactsCount = await ContactCollection.countDocuments({ userId });
+
+  const contacts = await contactsQuery
+    .sort({ [sortBy]: sortOrder })
+    .skip(skip)
+    .limit(limit)
+    .exec();
+
+  const paginationData = calcPaginationData(contactsCount, perPage, page);
 
   return {
     data: contacts,
@@ -40,46 +53,118 @@ export const getAllContacts = async ({
 };
 
 export const getContactById = async (contactId, userId) => {
-  const contact = await ContactsCollection.findOne({
+  const contact = await ContactCollection.findOne({
     _id: contactId,
-    userId: userId,
+    userId,
   });
+
   return contact;
 };
 
 export const createContact = async (payload) => {
-  const contact = await ContactsCollection.create(payload);
+  const { photo, ...restPayload } = payload;
+  let photoUrl;
+
+  if (photo) {
+    if (getEnvVar(ENV_VARS.ENABLE_CLOUDINARY) === 'true') {
+      photoUrl = await uploadToCloudinary(photo);
+    } else {
+      photoUrl = await saveFileToUploads(photo);
+    }
+  }
+
+  const contact = await ContactCollection.create({
+    ...restPayload,
+    photo: photoUrl,
+  });
+
   return contact;
 };
 
-export const updateContact = async (
-  contactId,
-  payload,
-  userId,
-  options = {},
-) => {
-  const rawResult = await ContactsCollection.findOneAndUpdate(
-    { _id: contactId, userId: userId },
-    payload,
+export const updateContact = async (contactId, payload, userId) => {
+  const { photo, ...restPayload } = payload;
+
+  const currentContact = await ContactCollection.findOne({
+    _id: contactId,
+    userId,
+  });
+
+  if (!currentContact) return null;
+
+  let photoUrl = currentContact.photo;
+
+  if (photo) {
+    if (currentContact.photo) {
+      if (getEnvVar(ENV_VARS.ENABLE_CLOUDINARY) === 'true') {
+        const publicId = path.basename(
+          currentContact.photo,
+          path.extname(currentContact.photo),
+        );
+        await deleteFromCloudinary(publicId);
+      } else {
+        const oldFilePath = path.join(
+          UPLOAD_DIR,
+          path.basename(currentContact.photo),
+        );
+        try {
+          await fs.unlink(oldFilePath);
+        } catch (error) {
+          console.error('Error deleting old local file:', error);
+        }
+      }
+    }
+
+    if (getEnvVar(ENV_VARS.ENABLE_CLOUDINARY) === 'true') {
+      photoUrl = await uploadToCloudinary(photo);
+    } else {
+      photoUrl = await saveFileToUploads(photo);
+    }
+  }
+
+  const contact = await ContactCollection.findOneAndUpdate(
+    { _id: contactId },
+    { ...restPayload, photo: photoUrl },
     {
       new: true,
-      includeResultMetadata: true,
-      ...options,
     },
   );
 
-  if (!rawResult || !rawResult.value) return null;
-
-  return {
-    contact: rawResult.value,
-    isNew: Boolean(rawResult?.lastErrorObject?.upserted),
-  };
+  return contact;
 };
 
 export const deleteContact = async (contactId, userId) => {
-  const contact = await ContactsCollection.findOneAndDelete({
+  const contactToDelete = await ContactCollection.findOne({
     _id: contactId,
-    userId: userId,
+    userId,
   });
+
+  if (!contactToDelete) return null;
+
+  // Видаляємо фото з Cloudinary або локального сховища, якщо воно існує
+  if (contactToDelete.photo) {
+    if (getEnvVar(ENV_VARS.ENABLE_CLOUDINARY) === 'true') {
+      const publicId = path.basename(
+        contactToDelete.photo,
+        path.extname(contactToDelete.photo),
+      );
+      await deleteFromCloudinary(publicId);
+    } else {
+      const filePath = path.join(
+        UPLOAD_DIR,
+        path.basename(contactToDelete.photo),
+      );
+      try {
+        await fs.unlink(filePath);
+      } catch (error) {
+        console.error('Error deleting local file:', error);
+      }
+    }
+  }
+
+  const contact = await ContactCollection.findOneAndDelete({
+    _id: contactId,
+    userId,
+  });
+
   return contact;
 };

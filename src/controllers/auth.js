@@ -1,21 +1,23 @@
 import createHttpError from 'http-errors';
 import {
-  registerUser,
   loginUser,
   logoutUser,
   refreshUserSession,
+  registerUser,
+  requestResetPwdEmail,
+  resetPassword,
 } from '../services/auth.js';
-import { REFRESH_TOKEN_LIFETIME } from '../constants/index.js';
+import { THERTY_DAYS } from '../constants/index.js';
 
 const setupSession = (res, session) => {
   res.cookie('refreshToken', session.refreshToken, {
     httpOnly: true,
-    expires: new Date(Date.now() + REFRESH_TOKEN_LIFETIME),
+    expires: new Date(Date.now() + THERTY_DAYS),
     path: '/',
   });
   res.cookie('sessionId', session._id, {
     httpOnly: true,
-    expires: new Date(Date.now() + REFRESH_TOKEN_LIFETIME),
+    expires: new Date(Date.now() + THERTY_DAYS),
     path: '/',
   });
 };
@@ -77,4 +79,28 @@ export const logoutUserController = async (req, res) => {
   });
 
   res.status(204).send();
+};
+
+export const requestResetPwdEmailController = async (req, res) => {
+  const { email } = req.body;
+
+  await requestResetPwdEmail({ email });
+
+  res.status(200).json({
+    status: 200,
+    message: 'Reset password email has been successfully sent.',
+    data: {},
+  });
+};
+
+export const resetPasswordController = async (req, res) => {
+  const { token, password } = req.body;
+
+  await resetPassword({ token, password });
+
+  res.status(200).json({
+    status: 200,
+    message: 'Password has been successfully reset.',
+    data: {},
+  });
 };
