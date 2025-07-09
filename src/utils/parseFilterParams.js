@@ -1,4 +1,5 @@
-import { isBoolean } from 'lodash';
+import pkg from 'lodash';
+const { isBoolean } = pkg;
 
 const parseType = (type) => {
   const isString = typeof type === 'string';
