@@ -2,12 +2,12 @@ import express from 'express';
 import cors from 'cors';
 import pino from 'pino-http';
 import { getEnvVar } from './utils/getEnvVar.js';
-import contactsRouter from './routers/contacts.js';
-import authRouter from './routers/auth.js';
+import router from './routers/index.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import { notFoundHandler } from './middlewares/notFoundHandler.js';
 import cookieParser from 'cookie-parser';
 import { ENV_VARS } from './constants/envVars.js';
+import { UPLOAD_DIR } from './constants/paths.js';
 
 const PORT = Number(getEnvVar(ENV_VARS.PORT, '3000'));
 
@@ -33,14 +33,15 @@ export function setupServer() {
     }),
   );
 
+  app.use('/uploads', express.static(UPLOAD_DIR));
+
   app.get('/', (req, res) => {
     res.status(200).json({
       message: `Server is running. Use /contacts endpoint.`,
     });
   });
 
-  app.use('/auth', authRouter);
-  app.use('/contacts', contactsRouter);
+  app.use(router);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

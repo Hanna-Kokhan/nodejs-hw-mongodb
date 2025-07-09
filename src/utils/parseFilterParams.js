@@ -1,17 +1,17 @@
+import { isBoolean } from 'lodash';
+
 const parseType = (type) => {
   const isString = typeof type === 'string';
-  if (!isString) return undefined;
-  const isAllowedType = ['work', 'home', 'personal'].includes(type);
-  if (isAllowedType) return type;
-  return undefined;
+  if (!isString) return;
+
+  const isContactType = ['work', 'home', 'personal'].includes(type);
+  if (isContactType) return type;
 };
 
 const parseIsFavourite = (isFavourite) => {
-  if (typeof isFavourite !== 'string') return undefined;
-  const lowered = isFavourite.toLowerCase();
-  if (lowered === 'true') return true;
-  if (lowered === 'false') return false;
-  return undefined;
+  if (isBoolean(isFavourite)) return isFavourite;
+  if (isFavourite === 'true') return true;
+  if (isFavourite === 'false') return false;
 };
 
 export const parseFilterParams = (query) => {
@@ -21,7 +21,7 @@ export const parseFilterParams = (query) => {
   const parsedIsFavourite = parseIsFavourite(isFavourite);
 
   return {
-    type: parsedType,
+    contactType: parsedType,
     isFavourite: parsedIsFavourite,
   };
 };

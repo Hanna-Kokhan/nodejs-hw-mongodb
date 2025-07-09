@@ -1,14 +1,13 @@
-import { ContactCollection } from '../db/models/contacts.js';
-import { calcPaginationData } from '../utils/calcPaginationData.js';
+import { ContactsCollection } from '../db/models/contacts.js';
+import { calculatePaginationData } from '../utils/calculatePaginationData.js';
 import { getEnvVar } from '../utils/getEnvVar.js';
 import { ENV_VARS } from '../constants/envVars.js';
-import { saveFileToUploads, deleteFileFromTemp } from '../utils/saveFile.js';
+import { saveFileToUploads } from '../utils/saveFile.js';
 import {
   initCloudinary,
   uploadToCloudinary,
   deleteFromCloudinary,
 } from '../utils/cloudinary.js';
-import { CLOUDINARY } from '../constants/envVars.js';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import { UPLOAD_DIR } from '../constants/paths.js';
@@ -26,17 +25,19 @@ export const getAllContacts = async ({
   const limit = perPage;
   const skip = (page - 1) * perPage;
 
-  const contactsQuery = ContactCollection.find({ userId });
+  const contactsQuery = ContactsCollection.find({ userId });
 
   if (filter.contactType) {
     contactsQuery.where('contactType').equals(filter.contactType);
   }
 
-  if (filter.isFavorite) {
-    contactsQuery.where('isFavorite').equals(filter.isFavorite);
+  if (filter.isFavourite !== undefined) {
+    contactsQuery.where('isFavourite').equals(filter.isFavourite);
   }
 
-  const contactsCount = await ContactCollection.countDocuments({ userId });
+  const contactsCount = await ContactsCollection.find({ userId })
+    .merge(contactsQuery.clone())
+    .countDocuments();
 
   const contacts = await contactsQuery
     .sort({ [sortBy]: sortOrder })
@@ -44,7 +45,7 @@ export const getAllContacts = async ({
     .limit(limit)
     .exec();
 
-  const paginationData = calcPaginationData(contactsCount, perPage, page);
+  const paginationData = calculatePaginationData(contactsCount, page, perPage);
 
   return {
     data: contacts,
@@ -53,7 +54,7 @@ export const getAllContacts = async ({
 };
 
 export const getContactById = async (contactId, userId) => {
-  const contact = await ContactCollection.findOne({
+  const contact = await ContactsCollection.findOne({
     _id: contactId,
     userId,
   });
@@ -73,7 +74,7 @@ export const createContact = async (payload) => {
     }
   }
 
-  const contact = await ContactCollection.create({
+  const contact = await ContactsCollection.create({
     ...restPayload,
     photo: photoUrl,
   });
@@ -81,10 +82,15 @@ export const createContact = async (payload) => {
   return contact;
 };
 
-export const updateContact = async (contactId, payload, userId) => {
+export const updateContact = async (
+  contactId,
+  payload,
+  userId,
+  options = {},
+) => {
   const { photo, ...restPayload } = payload;
 
-  const currentContact = await ContactCollection.findOne({
+  const currentContact = await ContactsCollection.findOne({
     _id: contactId,
     userId,
   });
@@ -96,10 +102,7 @@ export const updateContact = async (contactId, payload, userId) => {
   if (photo) {
     if (currentContact.photo) {
       if (getEnvVar(ENV_VARS.ENABLE_CLOUDINARY) === 'true') {
-        const publicId = path.basename(
-          currentContact.photo,
-          path.extname(currentContact.photo),
-        );
+        const publicId = currentContact.photo.split('/').pop().split('.')[0];
         await deleteFromCloudinary(publicId);
       } else {
         const oldFilePath = path.join(
@@ -121,11 +124,12 @@ export const updateContact = async (contactId, payload, userId) => {
     }
   }
 
-  const contact = await ContactCollection.findOneAndUpdate(
+  const contact = await ContactsCollection.findOneAndUpdate(
     { _id: contactId },
     { ...restPayload, photo: photoUrl },
     {
       new: true,
+      ...options,
     },
   );
 
@@ -133,20 +137,16 @@ export const updateContact = async (contactId, payload, userId) => {
 };
 
 export const deleteContact = async (contactId, userId) => {
-  const contactToDelete = await ContactCollection.findOne({
+  const contactToDelete = await ContactsCollection.findOne({
     _id: contactId,
     userId,
   });
 
   if (!contactToDelete) return null;
 
-  // Видаляємо фото з Cloudinary або локального сховища, якщо воно існує
   if (contactToDelete.photo) {
     if (getEnvVar(ENV_VARS.ENABLE_CLOUDINARY) === 'true') {
-      const publicId = path.basename(
-        contactToDelete.photo,
-        path.extname(contactToDelete.photo),
-      );
+      const publicId = contactToDelete.photo.split('/').pop().split('.')[0];
       await deleteFromCloudinary(publicId);
     } else {
       const filePath = path.join(
@@ -161,7 +161,7 @@ export const deleteContact = async (contactId, userId) => {
     }
   }
 
-  const contact = await ContactCollection.findOneAndDelete({
+  const contact = await ContactsCollection.findOneAndDelete({
     _id: contactId,
     userId,
   });
