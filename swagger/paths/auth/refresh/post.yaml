@@ -1,0 +1,49 @@
+tags:
+  - Auth
+summary: Refresh session
+operationId: refreshSession
+description: >
+  Refreshes a user's session using the `refreshToken` stored in cookies.
+  Returns a new access token in the response body and sets a new `refreshToken` and `sessionId` as HTTP-only cookies.
+security: []
+requestBody:
+  description: This endpoint does not accept a request body.
+  required: false
+  content: {}
+
+responses:
+  '200':
+    description: Successfully refreshed session and issued new access token
+    headers:
+      Set-Cookie:
+        description: >
+          Sets new `refreshToken` and `sessionId` cookies for the refreshed session.
+          Cookies are HTTP-only and expire in 30 days.
+        schema:
+          type: string
+        example: refreshToken=xyz456; HttpOnly; Path=/; Expires=Thu, 11 Aug 2025 20:00:00 GMT
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - status
+            - message
+            - data
+          properties:
+            status:
+              type: integer
+              example: 200
+            message:
+              type: string
+              example: Successfully refreshed a session!
+            data:
+              type: object
+              required:
+                - accessToken
+              properties:
+                accessToken:
+                  type: string
+                  example: 8AydEJCvZ6lt3kSL69m36TgVUMYHWDL3QUdfPYbH
+  '401':
+    $ref: '../../../components/responses/401.yaml'

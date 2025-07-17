@@ -1,0 +1,62 @@
+openapi: 3.1.0
+info:
+  version: 1.0.0
+  title: Contacts API
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  description: API for managing personal, work, and home contacts. You can create, retrieve, update, and delete contacts, with support for file uploads and authentication.
+tags:
+  - Auth
+  - Contacts
+servers:
+  - url: http://localhost:3000
+  - url: https://nodejs-hw-mongodb-d2fl.onrender.com
+paths:
+  /auth/register:
+    post:
+      $ref: '../swagger/paths/auth/register/post.yaml'
+  /auth/login:
+    post:
+      $ref: '../swagger/paths/auth/login/post.yaml'
+  /auth/refresh:
+    post:
+      $ref: '../swagger/paths/auth/refresh/post.yaml'
+  /auth/logout:
+    post:
+      $ref: '../swagger/paths/auth/logout/post.yaml'
+  /auth/send-reset-email:
+    post:
+      $ref: '../swagger/paths/auth/send-reset-email/post.yaml'
+  /auth/reset-pwd:
+    post:
+      $ref: '../swagger/paths/auth/reset-pwd/post.yaml'
+  /contacts:
+    get:
+      $ref: '../swagger/paths/contacts/get.yaml'
+    post:
+      $ref: '../swagger/paths/contacts/post.yaml'
+  /contacts/{id}:
+    get:
+      $ref: '../swagger/paths/contacts/{id}/get.yaml'
+    patch:
+      $ref: '../swagger/paths/contacts/{id}/patch.yaml'
+    delete:
+      $ref: '../swagger/paths/contacts/{id}/delete.yaml'
+components:
+  schemas:
+    Contact:
+      $ref: '../swagger/components/schemas/contact.yaml'
+  responses:
+    BadRequest:
+      $ref: '../swagger/components/responses/400.yaml'
+    Unauthorized:
+      $ref: '../swagger/components/responses/401.yaml'
+    NotFound:
+      $ref: '../swagger/components/responses/404.yaml'
+    Conflict:
+      $ref: '../swagger/components/responses/409.yaml'
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer

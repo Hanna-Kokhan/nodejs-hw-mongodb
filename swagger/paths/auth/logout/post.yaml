@@ -1,0 +1,24 @@
+tags:
+  - Auth
+summary: Logout user
+operationId: logoutUser
+description: >
+  Logs out a user by clearing the `refreshToken` and `sessionId` cookies and removing the session on the server.
+  Requires valid cookies to be present in the request.
+security: []
+requestBody:
+  description: This endpoint does not accept a request body.
+  required: false
+  content: {}
+responses:
+  '204':
+    description: Successfully logged out. No content is returned.
+    headers:
+      Set-Cookie:
+        description: >
+          Clears `refreshToken` and `sessionId` cookies using `Set-Cookie` headers.
+        schema:
+          type: string
+        example: sessionId=; HttpOnly; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT
+  '401':
+    $ref: '../../../components/responses/401.yaml'

@@ -1,0 +1,83 @@
+tags:
+  - Auth
+summary: Login user
+operationId: loginUser
+description: >
+  Authenticate a user with email and password.
+  Returns an access token in the response body and sets `refreshToken` and `sessionId` as HTTP-only cookies.
+security: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - email
+          - password
+        properties:
+          email:
+            type: string
+            format: email
+            example: example@gmail.com
+            description: User's email address
+          password:
+            type: string
+            format: password
+            example: wsdfeghjjsdF1!
+            description: User's password
+responses:
+  '200':
+    description: Successfully logged in a user
+    headers:
+      Set-Cookie:
+        description: >
+          Sets `refreshToken` and `sessionId` as HTTP-only cookies.
+          `refreshToken` expires in 30 days.
+          `sessionId` is the session identifier used for managing refresh flow.
+        schema:
+          type: string
+        example: refreshToken=abc123; HttpOnly; Path=/; Expires=Wed, 10 Aug 2025 20:00:00 GMT
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - status
+            - message
+            - data
+          properties:
+            status:
+              type: integer
+              example: 200
+            message:
+              type: string
+              example: Successfully logged in an user!
+            data:
+              type: object
+              required:
+                - accessToken
+              properties:
+                accessToken:
+                  type: string
+                  example: LBs0qwWOGVWIj5pokpLV54Mm2J9RqY2swWO+OfVr
+  '401':
+    description: Invalid credentials
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - status
+            - message
+            - data
+          properties:
+            status:
+              type: integer
+              example: 401
+            message:
+              type: string
+              example: Invalid credentials!
+            data:
+              type: object
+              example: {}
