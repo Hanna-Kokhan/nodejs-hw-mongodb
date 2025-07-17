@@ -12,7 +12,6 @@ import cookieParser from 'cookie-parser';
 import { ENV_VARS } from './constants/envVars.js';
 import { UPLOAD_DIR } from './constants/paths.js';
 import swaggerUi from 'swagger-ui-express';
-//import swaggerDocument from '../docs/swagger.json' assert { type: 'json' };
 
 const PORT = Number(getEnvVar(ENV_VARS.PORT, '3000'));
 
